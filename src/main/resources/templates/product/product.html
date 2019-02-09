@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Login</title>
+    <script th:src="@{static/Bootstrap/jquery-1.9.1.min.js}"></script>
+    <script th:src="@{static/Bootstrap/bootstrap/js/bootstrap.min.js}"></script>
+    <link th:href="@{static/Bootstrap/bootstrap/css/bootstrap.min.css}" rel="stylesheet" />
+    <link th:href="@{static/Bootstrap/bootstrap-table/bootstrap-table.css}" rel="stylesheet" />
+    <script th:src="@{static/Bootstrap/bootstrap-table/bootstrap-table.js}"></script>
+    <script th:src="@{static/Bootstrap/bootstrap-table/bootstrap-table-locale-all.js}"></script>
+
+    <link rel="stylesheet" th:href="@{static/Bootstrap/bootstrap/css/bootstrap-select.min.css}">
+    <script th:src="@{static/Bootstrap/bootstrap/js/bootstrap-select.min.js}"></script>
+</head>
+<body>
+<div id="toolbar" class="btn-group">
+    <button id="btn_add" type="button" class="btn btn-default" onclick="didClickAdd()" style="outline: none">
+        <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> 添加客户
+    </button>
+</div>
+<table id="customer-table"></table>
+
+<div class="modal fade wrapper" id="customer_view" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="outline: none">
+                    &times;
+                </button>
+                <h4 class="modal-title" id="customerLabel">
+                    添加客户
+                </h4>
+            </div>
+            <form role="form" style="margin-top: 10px;margin-right: 20px;margin-left: 20px">
+                <div class="form-group">
+                    <label class="form-label" for="customer_code">客户编号</label>
+                    <input type="text" class="form-control" id="customer_code" placeholder="请输入客户编号">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="customer_name">客户名称</label>
+                    <input type="text" class="form-control" id="customer_name" placeholder="请输入客户名称">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="customer_phone">客户电话</label>
+                    <input type="text" class="form-control" id="customer_phone" placeholder="请输入客户电话">
+                </div>
+            </form>
+
+            <div class="modal-footer form-actions">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭
+                </button>
+                <button type="button" onclick="submitCustomerInfo()" class="btn btn-primary">
+                    提交
+                </button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal -->
+</div>
+
+</body>
+<script th:inline="javascript" type="text/javascript">
+
+    function didClickAdd() {
+        var customerModel = $("#customer_view");
+        customerModel.val(null);
+        customerModel.modal('show');
+    }
+
+    function didClickEidtAction(customerData) {
+        var customerModel = $("#customer_view");
+        customerModel.val(customerData);
+        customerModel.modal('show');
+    }
+
+    function deleteAction(customerId) {
+        $.post("deleteCustomerById", {"id":customerId}, function(data){
+            alert(data.msg);
+            if (data.code === 1){
+                $("#customer-table").bootstrapTable('refresh');
+            }
+        },"json");
+    }
+
+    function submitCustomerInfo() {
+        var code = $("#customer_code").val();
+        var name = $("#customer_name").val();
+        var phone = $("#customer_phone").val();
+        if (code.length <= 0) {
+            alert("请输入客户编号");
+         return;
+        }
+        if (name.length <= 0) {
+            alert("请输入客户名称");
+            return;
+        }
+
+        var customerData = $("#customer_view").val();
+        var  parm;
+        var url;
+        if (customerData === "" || customerData === null) {
+            url = "addCustomer";
+            parm = {"code":code,
+                "name":name,
+                "phone":phone};
+        }else {
+            url = "updateCustomerById";
+            parm = {"code":code,
+                "name":name,
+                "phone":phone,
+                "id":customerData.id};
+        }
+        $.post(url, parm, function(data){
+            alert(data.msg);
+            if (data.code === 1){
+                $("#customer_view").modal('hide');
+                $("#customer-table").bootstrapTable('refresh');
+            }
+        },"json");
+    }
+
+
+    //编辑物品显示
+    $('#customer_view').on('show.bs.modal', function () {
+        var customerData = $(this).val();
+        if (customerData === "" || customerData === null) {
+            $("#customerLabel").text("添加客户");
+            $("#customer_code").val(null);
+            $("#customer_name").val(null);
+            $("#customer_phone").val(null);
+        } else {
+            $("#customerLabel").text("编辑客户");
+            $("#customer_code").val(customerData.code);
+            $("#customer_name").val(customerData.name);
+            $("#customer_phone").val(customerData.phone);
+        }
+
+    });
+
+    var query_Params = function (params) {
+        return {
+            page: params.pageNumber,
+            rows: params.pageSize,
+            name:params.searchText
+        };
+    };
+
+    $("#customer-table").bootstrapTable({
+        language:  'zh-CN',
+        url: '/queryCustomers',                //请求后台的URL（*）
+        method: 'get',                      //请求方式（*）
+        toolbar: '#toolbar',                //工具按钮用哪个容器
+        striped: true,                      //是否显示行间隔色
+        cache: false,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
+        pagination: true,                   //是否显示分页（*）
+        paginationPreText:'上一页',
+        paginationNextText:'下一页',
+        sortable: false,                     //是否启用排序
+        sortOrder: "asc",                   //排序方式
+        queryParams:query_Params,//传递参数（*）
+        queryParamsType:"",
+        sidePagination: "server",           //分页方式：client客户端分页，server服务端分页（*）
+        pageNumber:1,                       //初始化加载第一页，默认第一页
+        pageSize: 10,                       //每页的记录行数（*）
+        pageList: [10, 25, 50, 100],        //可供选择的每页的行数（*）
+        search: true,                       //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+        strictSearch: true,
+        showColumns: true,                  //是否显示所有的列
+        showRefresh: true,                  //是否显示刷新按钮
+        minimumCountColumns: 2,             //最少允许的列数
+        clickToSelect: false,                //是否启用点击选中行
+        uniqueId: "ID",                     //每一行的唯一标识，一般为主键列
+        showToggle:false,                    //是否显示详细视图和列表视图的切换按钮
+        cardView: false,                    //是否显示详细视图
+        detailView: false,                   //是否显示父子表
+        columns: [{
+            field: 'code',
+            title: '客户编号'
+        }, {
+            field: 'name',
+            title: '客户名称'
+        },{
+            field: 'phone',
+            title: '客户电话'
+        },{
+            title: '操作',
+            // width: 140,
+            field: 'id',
+            align: 'center',
+            formatter:function(value,row,index){
+                var e = '<button href="#" class="btn btn-mini btn-primary" onclick="didClickEidtAction('+JSON.stringify(row).replace(/\"/g,"'")+')"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></button> ';
+                var d = '<button href="#" class="btn btn-mini btn-danger" onclick="deleteAction(\''+ row.id +'\')"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button> ';
+                return e+d;
+            }}]
+    });
+
+</script>
+</html>
